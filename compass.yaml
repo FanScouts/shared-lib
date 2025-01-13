@@ -1,0 +1,15 @@
+name: shared-lib
+description: null
+configVersion: 1
+typeId: SERVICE
+ownerId: null
+links:
+  - name: null
+    type: REPOSITORY
+    url: https://github.com/FanScouts/shared-lib
+relationships:
+  DEPENDS_ON: []
+labels:
+  - language:go
+  - source:github
+customFields: null
