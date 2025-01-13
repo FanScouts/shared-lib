@@ -2,40 +2,40 @@ package jwt
 
 import (
 	"context"
+	"fmt"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/rs/zerolog/log"
 )
 
 type Validator interface {
 	Validate(jwtString string) (string, bool)
 }
 
-func NewValidator(jwkUrl string, certKeyId string, usernameField string) Validator {
+func NewValidator(jwkUrl string, certKeyId string, usernameField string) (Validator, error) {
+	jwks, err := jwk.Fetch(context.Background(), jwkUrl)
+	if err != nil {
+		return nil, fmt.Errorf("could not load jwks")
+	}
 	return &validator{
 		jwkUrl:        jwkUrl,
 		certKeyId:     certKeyId,
 		UsernameField: usernameField,
-	}
+		jwks:          jwks,
+	}, nil
 }
 
 type validator struct {
 	jwkUrl        string
 	certKeyId     string
 	UsernameField string
+	jwks          jwk.Set
 }
 
 func (j *validator) Validate(jwtString string) (string, bool) {
-	set, err := jwk.Fetch(context.Background(), j.jwkUrl)
-	if err != nil {
-		log.Error().Err(err).Send()
-		return "failed to fetch jwk", false
-	}
 
-	key, found := set.LookupKeyID(j.certKeyId)
+	key, found := j.jwks.LookupKeyID(j.certKeyId)
 	if !found {
-		log.Error().Err(err).Send()
-		return "keycloak cert id not found", false
+		return "certKey id not found", false
 	}
 
 	if token, err := jwt.ParseString(jwtString, jwt.WithKey(key.Algorithm(), key)); err == nil {
@@ -45,7 +45,7 @@ func (j *validator) Validate(jwtString string) (string, bool) {
 			return "", false
 		}
 	} else {
-		log.Error().Err(err).Send()
+		// TODO add logging hooks
 		return "", false
 	}
 }
